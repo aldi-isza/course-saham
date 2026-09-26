@@ -7,33 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# OS Files
-.DS_Store
-.AppleDouble
-.LSOverride
-Icon
-._*
+node_modules
+dist
+dist-ssr
+*.local
 
 # Editor directories and files
-.vscode
+.vscode/*
+!.vscode/extensions.json
 .idea
+.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# Dependencies
-node_modules/
-jspm_packages/
-.npm
-.yarn
-
-# Env
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-config.js
-config.json
