@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="id" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Stockbit Academy — Masterclass Analisis Saham (React & shadcn/ui)</title>
+  
+  <!-- Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- React 18, ReactDOM 18 & Babel -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            // shadcn/ui slate palette + Stockbit Green accent
+            background: '#0B0E14',
+            foreground: '#F8FAFC',
+            card: {
+              DEFAULT: '#151B28',
+              foreground: '#F8FAFC'
+            },
+            popover: {
+              DEFAULT: '#151B28',
+              foreground: '#F8FAFC'
+            },
+            primary: {
+              DEFAULT: '#00C26F', // Stockbit Signature Green
+              foreground: '#0B0E14',
+              hover: '#00A859'
+            },
+            secondary: {
+              DEFAULT: '#1E2638',
+              foreground: '#CBD5E1'
+            },
+            muted: {
+              DEFAULT: '#111622',
+              foreground: '#94A3B8'
+            },
+            accent: {
+              DEFAULT: '#1B2334',
+              foreground: '#00C26F'
+            },
+            destructive: {
+              DEFAULT: '#EF4444',
+              foreground: '#FFFFFF'
+            },
+            border: '#222B3D',
+            input: '#1E2638',
+            ring: '#00C26F',
+            stockbit: {
+              500: '#00C26F',
+              600: '#00A859',
+            }
+          },
+          borderRadius: {
+            lg: '0.75rem',
+            md: '0.5rem',
+            sm: '0.375rem',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0B0E14;
+      color: #F8FAFC;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #222B3D;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #2C384E;
+    }
+
+    .video-aspect {
+      aspect-ratio: 16 / 9;
+    }
+
+    @keyframes marquee {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-50%); }
+    }
+    .animate-marquee {
+      display: flex;
+      width: 200%;
+      animation: marquee 35s linear infinite;
+    }
+    .animate-marquee:hover {
+      animation-play-state: paused;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
+  
+  <div id="root"></div>
+
+  <!-- REACT APPLICATION SCRIPT -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // --- LUCIDE ICON HELPER COMPONENT ---
+    const Icon = ({ name, className = "w-4 h-4", size, color }) => {
+      const iconRef = useRef(null);
+      useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }, [name]);
+
+      return <i data-lucide={name} className={className} style={{ width: size, height: size, color }}></i>;
+    };
+
+    // --- SHADCN / UI PRIMITIVE COMPONENTS ---
+
+    // 1. Button
+    const Button = ({ children, variant = "default", size = "default", className = "", ...props }) => {
+      const baseStyle = "inline-flex items-center justify-center font-medium rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 active:scale-95";
+      
+      const variants = {
+        default: "bg-primary text-primary-foreground font-bold hover:bg-primary-hover shadow-sm shadow-primary/20",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-accent hover:text-white border border-border",
+        outline: "border border-border bg-transparent text-slate-200 hover:bg-secondary hover:text-white",
+        ghost: "hover:bg-secondary text-slate-300 hover:text-white",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+      };
+
+      const sizes = {
+        default: "h-9 px-4 py-2 text-xs",
+        sm: "h-8 px-3 text-[11px]",
+        lg: "h-11 px-6 text-sm",
+        icon: "h-9 w-9 p-0 flex items-center justify-center",
+      };
+
+      return (
+        <button className={`${baseStyle} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
+          {children}
+        </button>
+      );
+    };
+
+    // 2. Card
+    const Card = ({ className = "", children, ...props }) => (
+      <div className={`rounded-xl border border-border bg-card text-card-foreground shadow-xl ${className}`} {...props}>
+        {children}
+      </div>
+    );
+    const CardHeader = ({ className = "", children, ...props }) => (
+      <div className={`flex flex-col space-y-1.5 p-5 border-b border-border/60 ${className}`} {...props}>
+        {children}
+      </div>
+    );
+    const CardTitle = ({ className = "", children, ...props }) => (
+      <h3 className={`text-base font-bold tracking-tight text-white ${className}`} {...props}>
+        {children}
+      </h3>
+    );
+    const CardContent = ({ className = "", children, ...props }) => (
+      <div className={`p-5 ${className}`} {...props}>
+        {children}
+      </div>
+    );
+
+    // 3. Badge
+    const Badge = ({ variant = "default", className = "", children, ...props }) => {
+      const variants = {
+        default: "bg-primary/10 text-primary border-primary/20",
+        secondary: "bg-secondary text-secondary-foreground border-border",
+        outline: "text-slate-300 border-border bg-transparent",
+        destructive: "bg-destructive/10 text-destructive border-destructive/20",
+      };
+      return (
+        <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-[11px] font-mono font-bold transition-colors ${variants[variant]} ${className}`} {...props}>
+          {children}
+        </span>
+      );
+    };
+
+    // 4. Progress
+    const Progress = ({ value = 0, className = "" }) => (
+      <div className={`relative h-1.5 w-full overflow-hidden rounded-full bg-secondary ${className}`}>
+        <div className="h-full w-full flex-1 bg-primary transition-all duration-500" style={{ transform: `translateX(-${100 - (value || 0)}%)` }} />
+      </div>
+    );
+
+    // 5. Input
+    const Input = ({ className = "", ...props }) => (
+      <input
+        className={`flex h-9 w-full rounded-lg border border-border bg-muted px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+        {...props}
+      />
+    );
+
+    // 6. Avatar
+    const Avatar = ({ fallback = "AI", className = "" }) => (
+      <div className={`relative flex h-8 w-8 shrink-0 overflow-hidden rounded-full bg-primary/15 border border-primary/30 items-center justify-center font-bold text-xs text-primary ${className}`}>
+        {fallback}
+      </div>
+    );
+
+    // --- CURRICULUM INITIAL DATA ---
+    const INITIAL_CURRICULUM = [
+      {
+        id: 1,
+        title: "1. Pengenalan Pasar Saham & Cara Kerja BEI",
+        duration: "18:45",
+        youtubeId: "p7HKvqRI_Bo",
+        category: "MODUL 1 · DASAR PASAR MODAL",
+        description: "Dalam modul pembuka ini, kamu akan mempelajari konsep paling mendasar mengenai saham: apa itu kepemilikan emiten, bagaimana indeks IHSG bergerak, serta mekanisme transaksi bid dan ask di aplikasi sekuritas.",
+        completed: true
+      },
+      {
+        id: 2,
+        title: "2. Cara Membaca Laporan Keuangan (Laba Rugi & Neraca)",
+        duration: "24:10",
+        youtubeId: "vB-W343k4xY",
+        category: "MODUL 2 · ANALISIS FUNDAMENTAL",
+        description: "Panduan praktis membedah Laporan Keuangan perusahaan emiten. Belajar membaca Revenue, Net Profit Margin (NPM), Debt to Equity Ratio (DER), serta membedakan perusahaan sehat vs berisiko.",
+        completed: true
+      },
+      {
+        id: 3,
+        title: "3. Memahami Valuasi Saham: PER & PBV",
+        duration: "15:30",
+        youtubeId: "3A4h41vQx_Q",
+        category: "MODUL 2 · ANALISIS FUNDAMENTAL",
+        description: "Bagaimana menentukan apakah harga saham murah atau mahal? Mengupas tuntas Price to Earnings Ratio (PER) & Price to Book Value (PBV) untuk menemukan saham undervalue.",
+        completed: false
+      },
+      {
+        id: 4,
+        title: "4. Analisis Teknikal: Candlestick, Support & Resistance",
+        duration: "22:15",
+        youtubeId: "9g2bXbZf0A8",
+        category: "MODUL 3 · ANALISIS TEKNIKAL",
+        description: "Teknik membaca arah pergerakan grafik harga saham. Mengidentifikasi pola Candlestick reversal, menentukan titik Support (batas bawah) dan Resistance (batas atas) untuk entry jual-beli.",
+        completed: false
+      },
+      {
+        id: 5,
+        title: "5. Strategi Moving Average (MA20, MA50, MA200)",
+        duration: "19:00",
+        youtubeId: "N7QZ_2J8q8M",
+        category: "MODUL 3 · ANALISIS TEKNIKAL",
+        description: "Menggunakan indikator Moving Average untuk mengonfirmasi tren harga saham (Uptrend, Downtrend, Sideways) serta mendeteksi momen Golden Cross dan Death Cross.",
+        completed: false
+      },
+      {
+        id: 6,
+        title: "6. Bandarmologi & Membaca Broker Summary",
+        duration: "28:40",
+        youtubeId: "zX7p9Y8b2Ac",
+        category: "MODUL 4 · BANDARMOLOGI",
+        description: "Mempelajari pergerakan arus dana institusi besar (Big Money / Bandar). Cara menganalisis akumulasi dan distribusi saham lewat data Broker Summary harian.",
+        completed: false
+      },
+      {
+        id: 7,
+        title: "7. Manajemen Risiko & Position Sizing",
+        duration: "16:20",
+        youtubeId: "kW6q6Y8m9Xc",
+        category: "MODUL 5 · MONEY MANAGEMENT",
+        description: "Kunci utama bertahan di pasar saham: mengatur alokasi modal (Position Sizing), menetapkan Cut Loss disiplin, dan rasio Risk-to-Reward minimum 1:2.",
+        completed: false
+      },
+      {
+        id: 8,
+        title: "8. Menyusun Portofolio Saham Pembagi Dividen",
+        duration: "21:05",
+        youtubeId: "qY6b8W2m1Aa",
+        category: "MODUL 5 · STRATEGI PORTOFOLIO",
+        description: "Strategi membangun passive income dari saham-saham Blue Chip pembagi dividen rutin (Dividend Aristocrats Indonesia).",
+        completed: false
+      }
+    ];
+
+    // --- MAIN REACT APPLICATION COMPONENT ---
+    function App() {
+      const [curriculum, setCurriculum] = useState(INITIAL_CURRICULUM);
+      const [activeLessonId, setActiveLessonId] = useState(1);
+      const [activeTab, setActiveTab] = useState("overview");
+      const [notes, setNotes] = useState("");
+      const [notesSavedStatus, setNotesSavedStatus] = useState("Tersimpan otomatis");
+      const [streamInput, setStreamInput] = useState("");
+      const [streamComments, setStreamComments] = useState([
+        {
+          id: 1,
+          author: "@hendra_investor",
+          badge: "Pro Trader",
+          time: "2 jam lalu",
+          likes: 24,
+          content: "Penjelasan mekanisme $IHSG dan antrean Bid-Offer di menit 08:30 sangat jelas buat pemula yang baru install sekuritas. Mantap modulnya! 👍"
+        },
+        {
+          id: 2,
+          author: "@cuan_syariah",
+          badge: null,
+          time: "5 jam lalu",
+          likes: 15,
+          content: "Keren materinya! Kira-kira nanti di modul lanjutan ada sesi bedah emiten sektor perbankan $BBCA dan $BBRI gak ya?"
+        }
+      ]);
+
+      // Load saved state from localStorage
+      useEffect(() => {
+        const savedNotes = localStorage.getItem("stockbit_react_notes");
+        if (savedNotes) setNotes(savedNotes);
+
+        const savedProgress = localStorage.getItem("stockbit_react_progress");
+        if (savedProgress) {
+          const completedIds = JSON.parse(savedProgress);
+          setCurriculum(prev => prev.map(item => ({
+            ...item,
+            completed: completedIds.includes(item.id)
+          })));
+        }
+      }, []);
+
+      // Trigger Lucide icons refresh
+      useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      });
+
+      const activeLesson = curriculum.find(l => l.id === activeLessonId) || curriculum[0];
+      const completedCount = curriculum.filter(c => c.completed).length;
+      const progressPercent = Math.round((completedCount / curriculum.length) * 100);
+
+      const toggleComplete = (id) => {
+        setCurriculum(prev => {
+          const updated = prev.map(item => item.id === id ? { ...item, completed: !item.completed } : item);
+          const completedIds = updated.filter(c => c.completed).map(c => c.id);
+          localStorage.setItem("stockbit_react_progress", JSON.stringify(completedIds));
+          return updated;
+        });
+      };
+
+      const handleSaveNotes = (e) => {
+        const val = e.target.value;
+        setNotes(val);
+        localStorage.setItem("stockbit_react_notes", val);
+        setNotesSavedStatus("Tersimpan otomatis");
+      };
+
+      const handleAddComment = () => {
+        if (!streamInput.trim()) return;
+        const newComment = {
+          id: Date.now(),
+          author: "@aldi_isza",
+          badge: "Pro Member",
+          time: "Baru saja",
+          likes: 0,
+          content: streamInput
+        };
+        setStreamComments([newComment, ...streamComments]);
+        setStreamInput("");
+      };
+
+      // Helper to render ticker tags in comments
+      const renderCommentText = (text) => {
+        const parts = text.split(/(\$[A-Z]+)/g);
+        return parts.map((part, i) => 
+          part.startsWith('$') ? <span key={i} className="text-primary font-mono font-bold">{part}</span> : part
+        );
+      };
+
+      return (
+        <div className="min-h-screen flex flex-col">
+          
+          {/* 1. LIVE MARKET TICKER RIBBON */}
+          <div className="bg-[#090C12] border-b border-border text-xs overflow-hidden py-1.5 select-none">
+            <div className="flex animate-marquee items-center gap-8 whitespace-nowrap">
+              <div className="flex items-center gap-6 font-mono text-[11px]">
+                <div className="flex items-center gap-1.5"><span className="font-bold text-slate-300">IHSG</span><span className="text-slate-200">7,760.40</span><span className="text-primary font-semibold flex items-center"><Icon name="trending-up" className="w-3 h-3 mr-0.5" />+0.72%</span></div>
+                <div className="flex items-center gap-1.5"><span className="font-bold text-slate-300">LQ45</span><span className="text-slate-200">982.15</span><span className="text-primary font-semibold flex items-center"><Icon name="trending-up" className="w-3 h-3 mr-0.5" />+0.55%</span></div>
+                <div className="flex items-center gap-1.5"><span className="font-bold text-slate-300">BBCA</span><span className="text-slate-200">10,500</span><span className="text-primary font-semibold flex items-center"><Icon name="trending-up" className="w-3 h-3 mr-0.5" />+1.45%</span></div>
+                <div className="flex items-center gap-1.5"><span className="font-bold text-slate-300">BBRI</span><span className="text-slate-200">5,225</span><span className="text-destructive font-semibold flex items-center"><Icon name="trending-down" className="w-3 h-3 mr-0.5" />-0.48%</span></div>
+                <div className="flex items-center gap-1.5"><span className="font-bold text-slate-300">BMRI</span><span className="text-slate-200">7,175</span><span className="text-primary font-semibold flex items-center"><Icon name="trending-up" className="w-3 h-3 mr-0.5" />+0.70%</span></div>
+                <div className="flex items-center gap-1.5"><span className="font-bold text-slate-300">TLKM</span><span className="text-slate-200">3,040</span><span className="text-primary font-semibold flex items-center"><Icon name="trending-up" className="w-3 h-3 mr-0.5" />+0.33%</span></div>
+                <div className="flex items-center gap-1.5"><span className="font-bold text-slate-300">ASII</span><span className="text-slate-200">5,150</span><span className="text-primary font-semibold flex items-center"><Icon name="trending-up" className="w-3 h-3 mr-0.5" />+1.48%</span></div>
+              </div>
+              <div className="flex items-center gap-6 font-mono text-[11px]">
+                <div className="flex items-center gap-1.5"><span className="font-bold text-slate-300">IHSG</span><span className="text-slate-200">7,760.40</span><span className="text-primary font-semibold flex items-center"><Icon name="trending-up" className="w-3 h-3 mr-0.5" />+0.72%</span></div>
+                <div className="flex items-center gap-1.5"><span className="font-bold text-slate-300">BBCA</span><span className="text-slate-200">10,500</span><span className="text-primary font-semibold flex items-center"><Icon name="trending-up" className="w-3 h-3 mr-0.5" />+1.45%</span></div>
+                <div className="flex items-center gap-1.5"><span className="font-bold text-slate-300">BBRI</span><span className="text-slate-200">5,225</span><span className="text-destructive font-semibold flex items-center"><Icon name="trending-down" className="w-3 h-3 mr-0.5" />-0.48%</span></div>
+                <div className="flex items-center gap-1.5"><span className="font-bold text-slate-300">BMRI</span><span className="text-slate-200">7,175</span><span className="text-primary font-semibold flex items-center"><Icon name="trending-up" className="w-3 h-3 mr-0.5" />+0.70%</span></div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. STOCKBIT HEADER NAVBAR */}
+          <header className="sticky top-0 z-40 bg-muted/95 backdrop-blur-md border-b border-border">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+              
+              <div className="flex items-center gap-4">
+                <a href="#" className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-background font-black shadow-sm shadow-primary/30">
+                    <Icon name="bar-chart-3" className="w-5 h-5" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-extrabold tracking-tight text-white">STOCKBIT</span>
+                    <Badge variant="default" className="uppercase border-primary/30">Academy</Badge>
+                  </div>
+                </a>
+
+                <nav className="hidden md:flex items-center gap-1 pl-4 border-l border-border">
+                  <Button variant="secondary" size="sm" className="bg-secondary text-white border border-border">Modul Belajar</Button>
+                  <Button variant="ghost" size="sm">Keystats</Button>
+                  <Button variant="ghost" size="sm">Chartbit</Button>
+                  <Button variant="ghost" size="sm">Stream</Button>
+                </nav>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-2 bg-muted border border-border rounded-lg px-3 py-1.5 text-xs text-slate-400 w-48 lg:w-64">
+                  <Icon name="search" className="w-3.5 h-3.5 text-slate-500" />
+                  <Input placeholder="Cari materi atau emiten..." className="border-none bg-transparent h-auto p-0 focus-visible:ring-0" />
+                  <kbd className="hidden lg:inline text-[9px] font-mono px-1.5 py-0.5 rounded bg-card border border-border text-slate-400">⌘K</kbd>
+                </div>
+
+                <div className="hidden md:flex items-center gap-3 bg-card border border-border px-3.5 py-1.5 rounded-lg text-xs">
+                  <div className="w-20"><Progress value={progressPercent} /></div>
+                  <span className="font-mono text-primary font-bold text-[11px]">{completedCount}/{curriculum.length} Selesai</span>
+                </div>
+
+                <div className="flex items-center gap-2 pl-2 border-l border-border">
+                  <Avatar fallback="AI" />
+                  <div className="hidden xl:block text-left">
+                    <div className="text-xs font-bold text-slate-200 leading-tight">Aldi Isza</div>
+                    <div className="text-[10px] text-primary font-semibold font-mono">STOCKBIT PRO</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </header>
+
+          {/* 3. MAIN CONTENT WORKSPACE */}
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex-1">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              
+              {/* LEFT COLUMN: VIDEO PLAYER & TABS */}
+              <div className="lg:col-span-8 space-y-5">
+                
+                {/* VIDEO CARD */}
+                <Card className="overflow-hidden border-border bg-card">
+                  <div className="video-aspect w-full bg-black relative">
+                    <iframe 
+                      className="w-full h-full"
+                      src={`https://www.youtube.com/embed/${activeLesson.youtubeId}?autoplay=1&enablejsapi=1`}
+                      title={activeLesson.title}
+                      frameBorder="0" 
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                      allowFullScreen>
+                    </iframe>
+                  </div>
+
+                  <div className="p-5 sm:p-6 border-t border-border bg-card">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-2.5">
+                      <Badge variant="default" className="text-[10px] py-1 border-primary/20">{activeLesson.category}</Badge>
+                      <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
+                        <span className="flex items-center gap-1.5"><Icon name="clock" className="w-3.5 h-3.5 text-slate-500" />{activeLesson.duration} Min</span>
+                        <span className="flex items-center gap-1.5"><Icon name="book-open" className="w-3.5 h-3.5 text-slate-500" />Level: Pemula</span>
+                      </div>
+                    </div>
+
+                    <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug mt-1">
+                      {activeLesson.title}
+                    </h2>
+
+                    {/* EMITEN CHIPS */}
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
+                      <span className="text-[11px] font-medium text-slate-400">Emiten Terkait:</span>
+                      <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+                        <span className="px-2 py-0.5 rounded bg-muted border border-border text-primary font-bold hover:border-primary/50 cursor-pointer transition">BBCA +1.45%</span>
+                        <span className="px-2 py-0.5 rounded bg-muted border border-border text-destructive font-bold hover:border-destructive/50 cursor-pointer transition">BBRI -0.48%</span>
+                        <span className="px-2 py-0.5 rounded bg-muted border border-border text-primary font-bold hover:border-primary/50 cursor-pointer transition">BMRI +0.70%</span>
+                      </div>
+                    </div>
+
+                    {/* CONTROL BUTTONS */}
+                    <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
+                      <Button 
+                        variant={activeLesson.completed ? "outline" : "default"}
+                        onClick={() => toggleComplete(activeLesson.id)}
+                        className="gap-2 px-5"
+                      >
+                        <Icon name={activeLesson.completed ? "check-circle-2" : "check"} className="w-4 h-4" />
+                        <span>{activeLesson.completed ? "Selesai Dipelajari" : "Tandai Selesai"}</span>
+                      </Button>
+
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="secondary" 
+                          disabled={activeLessonId <= 1}
+                          onClick={() => setActiveLessonId(prev => Math.max(1, prev - 1))}
+                          className="gap-1.5"
+                        >
+                          <Icon name="chevron-left" className="w-3.5 h-3.5" /> Sebelumnya
+                        </Button>
+                        <Button 
+                          variant="secondary" 
+                          disabled={activeLessonId >= curriculum.length}
+                          onClick={() => setActiveLessonId(prev => Math.min(curriculum.length, prev + 1))}
+                          className="gap-1.5"
+                        >
+                          Selanjutnya <Icon name="chevron-right" className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* SHADCN TABS SECTION */}
+                <Card className="p-5 sm:p-6 border-border">
+                  <div className="flex items-center gap-6 border-b border-border pb-3 mb-5 text-xs font-bold overflow-x-auto custom-scrollbar">
+                    <button 
+                      onClick={() => setActiveTab("overview")} 
+                      className={`pb-3 -mb-3 transition whitespace-nowrap ${activeTab === "overview" ? "text-white border-b-2 border-primary" : "text-slate-400 hover:text-slate-200"}`}
+                    >
+                      Ringkasan Materi
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab("keystats")} 
+                      className={`pb-3 -mb-3 transition whitespace-nowrap ${activeTab === "keystats" ? "text-white border-b-2 border-primary" : "text-slate-400 hover:text-slate-200"}`}
+                    >
+                      Keystats & Ratio
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab("stream")} 
+                      className={`pb-3 -mb-3 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === "stream" ? "text-white border-b-2 border-primary" : "text-slate-400 hover:text-slate-200"}`}
+                    >
+                      <span>Stream Komunitas</span>
+                      <Badge variant="default" className="px-1.5 py-0 border-none">{streamComments.length}</Badge>
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab("notes")} 
+                      className={`pb-3 -mb-3 transition whitespace-nowrap ${activeTab === "notes" ? "text-white border-b-2 border-primary" : "text-slate-400 hover:text-slate-200"}`}
+                    >
+                      Catatan Pribadi
+                    </button>
+                  </div>
+
+                  {/* TAB: OVERVIEW */}
+                  {activeTab === "overview" && (
+                    <div className="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                      <p>{activeLesson.description}</p>
+
+                      <div className="p-4 rounded-lg bg-muted border border-border space-y-2.5 mt-4">
+                        <h4 className="text-xs font-mono font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                          <Icon name="sparkles" className="w-4 h-4 text-primary" /> Poin Kunci Yang Dipelajari:
+                        </h4>
+                        <ul className="list-disc list-inside space-y-1.5 text-xs text-slate-300 pl-1">
+                          <li>Perbedaan antara Investasi Jangka Panjang (Investing) vs Trading Harian.</li>
+                          <li>Struktur Pasar Modal Indonesia (OJK, BEI, KSEI, KPEI).</li>
+                          <li>Cara membaca Orderbook: Bid (Antrean Beli) & Offer/Ask (Antrean Jual).</li>
+                          <li>Psikologi dasar dalam menghadapi fluktuasi harga saham harian.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB: KEYSTATS */}
+                  {activeTab === "keystats" && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-bold text-white">Contoh Screening: BBCA (Bank Central Asia)</h4>
+                          <p className="text-[11px] text-slate-400">Financial Metrics & Valuation Ratios</p>
+                        </div>
+                        <Badge variant="outline" className="border-primary/30 text-primary">LQ45 · Big Cap</Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-3 rounded-lg bg-muted border border-border">
+                          <div className="text-[10px] font-mono text-slate-400">P/E RATIO (TTM)</div>
+                          <div className="text-base font-bold text-white font-mono mt-0.5">23.4x</div>
+                          <div className="text-[10px] text-primary font-mono">Industry: 18.2x</div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-muted border border-border">
+                          <div className="text-[10px] font-mono text-slate-400">P/B RATIO (PBV)</div>
+                          <div className="text-base font-bold text-white font-mono mt-0.5">4.8x</div>
+                          <div className="text-[10px] text-slate-400 font-mono">Book Val: Rp 2,187</div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-muted border border-border">
+                          <div className="text-[10px] font-mono text-slate-400">ROE (ANNUAL)</div>
+                          <div className="text-base font-bold text-primary font-mono mt-0.5">22.1%</div>
+                          <div className="text-[10px] text-primary font-mono">High Efficiency</div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-muted border border-border">
+                          <div className="text-[10px] font-mono text-slate-400">DIVIDEND YIELD</div>
+                          <div className="text-base font-bold text-white font-mono mt-0.5">2.65%</div>
+                          <div className="text-[10px] text-slate-400 font-mono">DPR: 68.4%</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB: STREAM */}
+                  {activeTab === "stream" && (
+                    <div className="space-y-4">
+                      <div className="p-3.5 rounded-lg bg-muted border border-border space-y-3">
+                        <div className="flex gap-2.5 items-center">
+                          <Avatar fallback="AI" />
+                          <Input 
+                            value={streamInput}
+                            onChange={(e) => setStreamInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+                            placeholder="Bagikan pandangan kamu... (cth: $BBCA $IHSG)" 
+                            className="bg-card"
+                          />
+                          <Button onClick={handleAddComment} size="sm" className="px-4">Post</Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        {streamComments.map(comment => (
+                          <div key={comment.id} className="p-4 rounded-lg bg-muted border border-border space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-xs text-slate-200">{comment.author}</span>
+                                {comment.badge && <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-card border-border">{comment.badge}</Badge>}
+                                <span className="text-[10px] text-slate-500 font-mono">{comment.time}</span>
+                              </div>
+                              <button className="text-slate-500 hover:text-destructive text-xs flex items-center gap-1.5 transition">
+                                <Icon name="heart" className="w-3.5 h-3.5" /><span>{comment.likes}</span>
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-300 leading-relaxed">{renderCommentText(comment.content)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB: NOTES */}
+                  {activeTab === "notes" && (
+                    <div className="space-y-3">
+                      <textarea 
+                        value={notes}
+                        onChange={handleSaveNotes}
+                        rows="6" 
+                        placeholder="Tulis catatan penting kamu di sini... (otomatis tersimpan secara lokal)" 
+                        className="w-full bg-muted border border-border rounded-lg p-4 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-primary font-mono leading-relaxed"
+                      ></textarea>
+                      <div className="flex justify-between items-center text-[11px] text-slate-500 font-mono">
+                        <span>Status: <strong className="text-primary font-normal">{notesSavedStatus}</strong></span>
+                        <span className="flex items-center gap-1"><Icon name="cloud-snow" className="w-3.5 h-3.5" /> Local Sync Active</span>
+                      </div>
+                    </div>
+                  )}
+
+                </Card>
+
+              </div>
+
+              {/* RIGHT COLUMN: CURRICULUM PLAYLIST SIDEBAR */}
+              <div className="lg:col-span-4 space-y-4 sticky top-24">
+                
+                <Card className="p-4 sm:p-5 border-border">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+                        <Icon name="list-video" className="w-4 h-4" />
+                      </div>
+                      <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Kurikulum</h3>
+                    </div>
+                    <Badge variant="outline" className="border-border text-slate-400">8 Modul</Badge>
+                  </div>
+
+                  <div className="space-y-2 custom-scrollbar max-h-[560px] overflow-y-auto pr-1">
+                    {curriculum.map(lesson => {
+                      const isActive = lesson.id === activeLessonId;
+                      return (
+                        <div 
+                          key={lesson.id}
+                          onClick={() => setActiveLessonId(lesson.id)}
+                          className={`p-3 rounded-lg border transition cursor-pointer flex items-start justify-between gap-3 ${isActive ? 'bg-primary/10 border-l-4 border-l-primary border-t-primary/20 border-r-primary/20 border-b-primary/20 text-white shadow-sm' : 'bg-muted border-border text-slate-400 hover:border-slate-600 hover:text-slate-200'}`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); toggleComplete(lesson.id); }}
+                              className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center border transition ${lesson.completed ? 'bg-primary border-primary text-background font-bold' : 'border-slate-600 hover:border-slate-400'}`}
+                            >
+                              {lesson.completed && <Icon name="check" className="w-3 h-3 text-background" />}
+                            </button>
+                            <div>
+                              <div className={`text-xs font-semibold leading-snug ${isActive ? 'text-primary' : 'text-slate-200'}`}>{lesson.title}</div>
+                              <div className="text-[10px] font-mono text-slate-500 mt-1 flex items-center gap-1">
+                                <Icon name="play-circle" className="w-3 h-3" /> {lesson.duration} Min
+                              </div>
+                            </div>
+                          </div>
+
+                          {isActive && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0 shadow-[0_0_8px_rgba(0,194,111,0.8)]"></div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+
+                {/* MENTOR CARD */}
+                <Card className="p-4 flex items-center gap-3 border-border">
+                  <Avatar fallback="AI" className="w-10 h-10 text-sm bg-primary text-background font-black" />
+                  <div>
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>Aldi Isza, WMI</span>
+                      <Icon name="check-circle-2" className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-mono mt-0.5">Head of Equity Research</div>
+                  </div>
+                </Card>
+
+              </div>
+
+            </div>
+          </main>
+
+        </div>
+      );
+    }
+
+    const rootElement = document.getElementById("root");
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(<App />);
+  </script>
+</body>
+</html>
